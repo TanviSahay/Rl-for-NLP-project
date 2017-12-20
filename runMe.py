@@ -1,5 +1,6 @@
 import argparse
 import imp
+import itertools
 from project_utils.utilities import  *
 
 if __name__ == '__main__':
@@ -22,25 +23,43 @@ if __name__ == '__main__':
     model_source = imp.load_source(args.model, './Models/%s/%s.py' % (args.model, args.model))
     params = './Models/%s/%s-params.json' % (args.model,args.model)
     Model = model_source.model(params, reward)
-    print('Beginning training')
-    returns = Model.fit(neps, trials)
 
-    if args.plot:
-        plot(returns, args.model, trials, neps)
+    hyperparameters = Model.hyperparams
+    permutations = itertools.product(*hyperparameters)
+    best_params = None
+    best_score = 0.0
+    for i, perm in enumerate(permutations):
+        print('Beginning training')
+        print('Running permutation {}'.format(i))
+        returns, time = Model.fit(neps, trials, perm)
+        print 'model has been fit, time taken: ', time
+        if args.plot:
+            plot(returns, args.model, trials, neps, perm[0], perm[1], 1.0)
+        print returns
 
-    reward_id = {1: 'word_cooc', 2: 'pos_cooc', 3:'word_pos_prod', 4: 'word_pos_avg'}
-    if args.save:
-        name = '{}-{}-n{}-t{}'.format(args.model, reward_id[reward], args.neps, args.trials)
-        with open(os.path.join('./saved_models/%s' % (args.model), '%s.pickle' % name), 'wb') as f:
-            pickle.dump(returns, f)
+        reward_id = {1: 'word_cooc', 2: 'pos_cooc', 3:'word_pos_prod', 4: 'word_pos_avg'}
 
-    if args.predict:
-        print('Computing sentence scores for sentences generated using the final trained model')
-        score = Model.predict()
-        print('Final Bigram Probability score averaged over 1000 sentences: ', score)
+        if args.predict:
+            print('Computing sentence scores for sentences generated using the final trained model')
+            score = Model.predict()
+            print('Final Bigram Probability score averaged over 1000 sentences: ', score)
+        #score = 100
+        if score > best_score:
+            best_score = score
+            best_params = perm
+            if args.save:
+                print 'Saving permutation'
+                name = '{}-{}-n{}-t{}-perm'.format(args.model, reward_id[reward], args.neps, args.trials)
+                for val in perm:
+                    name += '_'
+                    name += str(val)
+                with open(os.path.join('./saved_models/%s' % (args.model), '%s.pickle' % name), 'wb') as f:
+                    pickle.dump(returns, f)
+
+    print 'Best score: ', best_score
+    print 'Best Parameters: ', best_params
 
 
 
-
-
+#, 0.001, 0.0001
 

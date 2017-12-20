@@ -15,9 +15,13 @@ def dd():
     return defaultdict(float)
 
 
-def gettext(path):
-    with open(path, 'r') as f:
-        text = f.read().strip().decode("utf-8").lower()
+def gettext(inpath):
+    text = ''
+    files = os.listdir(inpath)
+    for file in files:
+        with open(os.path.join(inpath, file), 'r') as f:
+            text += f.read().decode("utf-8").strip().lower()
+            text += ' '
     return text
 
 
@@ -67,6 +71,11 @@ def get_unigram_counts(tokens):
     unigram_counts = defaultdict(int)
     while i < len(tokens):
         unigram_counts[tokens[i]] += 1
+        if i % 1000 == 0:
+            try:
+                print 'Token: {} Count: {}'.format(tokens[i], unigram_counts[tokens[i].encode("utf-8")])
+            except:
+                pass
         i += 1
     return unigram_counts
 
@@ -84,7 +93,7 @@ def get_pos_unigram_counts(sentences):
     tag_unigram_counts = defaultdict(int)
     for i,sent in enumerate(sentences):
         tagged_sent = pos_tag(sent)
-        if i % 100 == 0:
+        if i % 1000 == 0:
             print('\n\tNumber of sentences done for unigrams: {}/{}'.format(i, len(sentences)))
             print('\tSample tagging: {}'.format(tagged_sent))
         for word, tag in tagged_sent:
@@ -96,7 +105,7 @@ def get_pos_bigram_counts(sentences):
     tag_bigram_counts = defaultdict(dd)
     for j,sent in enumerate(sentences):
         tagged_sent = pos_tag(sent)
-        if j % 100 == 0:
+        if j % 1000 == 0:
             print('\n\tNumber of sentences done for bigrams: {}/{}'.format(j, len(sentences)))
             print('\tSample tagging: {}'.format(tagged_sent))
         i = 0
@@ -112,6 +121,7 @@ def getreward(counts, bigram_counts):
     for key, val in bigram_counts.items():
         for word, score in val.items():
             rewards[key][word] = math.ceil((score / float(counts[key])) * 10)
+            print score, counts[key]
     return rewards
 
 
@@ -132,18 +142,18 @@ if __name__ == '__main__':
 
     vocab_limit = int(args.vocab)
 
-    text = gettext('./Data/11-0.txt')
+    text = gettext('./Data/Text_Corpus')
     print('Text data loaded.\nTokenizing Sentences')
 
     #clean the data
     clean_text = clean_data(text)
 
-    print('Limiting vocabulary of input')
-    #limit vocab
+     #limit vocab
     limited_text = limit_vocab(clean_text, vocab_limit)
 
     #tokenize the data
     tokens, tokenized_sentences = get_tokenized_text(limited_text)
+
     #get vocab
     vocab = list(set(tokens))
 
@@ -188,3 +198,5 @@ if __name__ == '__main__':
     with open('./Data/vocab.pkl','wb') as f:
         pickle.dump(vocab,f)
 
+    print('Limiting vocabulary of input to {} words'.format(vocab_limit))
+    print('Total number of tokens: {}'.format(len(tokens)))

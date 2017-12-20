@@ -1,6 +1,6 @@
 import numpy as np
 import os
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import warnings
 import pickle
 from collections import defaultdict
@@ -39,6 +39,7 @@ def pos_cooc_reward():
     with open('./Data/pos_cooccurrence.pkl','rb') as f:
         return pickle.load(f)
 
+
 def word_pos_reward(combine):
     if os.path.exists('./Data/word_pos_%s'%combine):
         with open('./Data/word_pos_%s'%combine,'rb') as f:
@@ -51,13 +52,13 @@ def word_pos_reward(combine):
         rewards = defaultdict(dd)
         for key, val in word_cooc.items():
             for word, score in val.items():
-                bigram = key + ' ' + word
+                bigram = [key, word]
                 tagged_bigram = pos_tag(bigram)
                 if combine == 'prod':
                     rewards[key][word] = pos_cooc[tagged_bigram[0][1]][tagged_bigram[1][1]] * score
                 if combine == 'avg':
                     rewards[key][word] = (pos_cooc[tagged_bigram[0][1]][tagged_bigram[1][1]] + score) / 2
-        with open('./Data/word_pos_%s'%combine, 'wb') as f:
+        with open('./Data/word_pos_%s.pickle'%combine, 'wb') as f:
             pickle.dump(rewards, f)
     return rewards
 
@@ -81,22 +82,23 @@ def word_pos_reward(combine):
 #    return c
 
 
-def plot(data, method, trials, NEPS):	
+def plot(data, method, trials, NEPS,eps,alp,g):	
     mean = np.mean(data, axis=1)
-    #print mean
+    #print mean.shape
     variance = np.mean(np.square(data.T-mean).T, axis=1)
     #print variance
     std = np.sqrt(variance)
     #print std
     x = list(np.arange(0,NEPS,1))
     y = list(mean)
+    print 'Length of x: {}   length of y: {}'.format(len(x), len(y))
     err = list(std)
-    plt.axis((0,NEPS,0,1))
+    plt.axis((0,NEPS,0,15))
     plt.errorbar(x, y, yerr=err, fmt='-ro')
     #plt.plot(y)
     plt.xlabel('Episode')
     plt.ylabel('Expected return of reward')
-    plt.title('%s for %d trials, epsilon: %.2f, alpha: %.2f, gamma: %.2f' % (method, trials, float(args.epsilon), float(args.alpha), float(args.gamma)))
+    plt.title('%s for %d trials, epsilon: %.4f, alpha: %.2f, gamma: %.2f' % (method, trials, float(eps), float(alp), float(g)))
     plt.savefig('Expected_Return_%s_%d_unclipped.jpg' % (method, trials))
     plt.show()
     return mean[-1]

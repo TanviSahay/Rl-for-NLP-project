@@ -1,6 +1,7 @@
 import pickle
 import json
 import numpy as np
+from datetime import datetime
 from project_utils.utilities import *
 from Codes import env as ENV
 from Codes import senagent as SGA
@@ -15,20 +16,23 @@ class model:
         self.epsilon = self.params['epsilon']
         self.alpha  = self.params['alpha']
         self.gamma = self.params['gamma']
+        self.hyperparams = [self.epsilon, self.alpha, self.gamma]
         self.reward_func = reward
         self.rewards = getReward(self.reward_func)
 
 
-    def fit(self, neps, tri):
+    def fit(self, neps, tri, perm):
+        start = datetime.now()
+        self.epsilon, self.alpha, self.gamma = perm
 
         returns = np.zeros((neps, tri))
         for t in range(tri):
             self.agent = SGA.sentGenAgent(self.epsilon, self.alpha, self.gamma)
             print('Running trial: ', t)
             for n in range(neps):
-                if n % 100 == 0:
-                    print('Running episode: ', n)
-                env = ENV.Environment(self.rewards)
+                #if n % 100 == 0:
+                #    print('Running episode: ', n)
+                env = ENV.Environment(self.rewards, self.reward_func)
                 state = env.prev_state_id
                 run = 'run'
                 l = 0
@@ -49,14 +53,16 @@ class model:
                     qsa_prime = max(max_qsa_prime)
                     self.agent.updateWeights(reward, qsa_prime, qsa, phisa)
                     state = next_state
-        return returns
+            #print returns[:,t]
+        end = datetime.now()
+        return returns, end-start
 
 
     def predict(self):
         sentences = []
         for n in range(1000):
             sent = []
-            env = ENV.Environment(self.rewards)
+            env = ENV.Environment(self.rewards, self.reward_func)
             state = env.prev_state_id
             sent.append(env.prev_state)
             run = 'run'
@@ -82,10 +88,10 @@ class model:
     def bigram_probability(self,sent):
         with open('./Data/bigram_probability.pkl','rb') as f:
             bigram_occurrence = pickle.load(f)
-        bigram_prob = 1.0
+        bigram_prob = 0.0
         for i in range(len(sent) - 1):
-            bigram_prob *= bigram_occurrence[sent[i]][sent[i+1]]
-        return bigram_prob
+            bigram_prob += np.log(bigram_occurrence[sent[i]][sent[i+1]])
+        return np.exp(bigram_prob)
 
 
 
